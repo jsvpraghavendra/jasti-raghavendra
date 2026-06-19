@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopez | Checkout</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #eaeded; }
+        header { background: #131921; color: white; padding: 15px 30px; }
+        header h1 { margin: 0; font-size: 1.5rem; cursor: pointer; }
+        
+        .container { max-width: 900px; margin: 30px auto; display: flex; gap: 20px; padding: 0 20px; }
+        .col { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .cart-col { flex: 1; }
+        .form-col { width: 350px; }
+        
+        h2 { border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-top: 0; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        .item-details { display: flex; flex-direction: column; }
+        .item-name { font-weight: 600; color: #111; }
+        .remove-link { color: #007185; font-size: 0.85rem; cursor: pointer; text-decoration: none; margin-top: 4px; display: inline-block; }
+        .remove-link:hover { color: #c45500; text-decoration: underline; }
+        
+        .total { font-size: 1.3rem; font-weight: bold; color: #B12704; text-align: right; margin-top: 20px; }
+        
+        input, textarea { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .submit-btn { background: #ffd814; border: 1px solid #fcd200; width: 100%; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; }
+        .submit-btn:hover { background: #f7ca00; }
+        .empty-msg { color: #555; font-style: italic; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 onclick="window.location.href='/'">🛒 Shopez</h1>
+    </header>
+
+    <div class="container">
+        <div class="col cart-col">
+            <h2>Order Summary</h2>
+            <div id="cart-items"></div>
+            <div class="total">Total: $<span id="grand-total">0.00</span></div>
+        </div>
+
+        <div class="col form-col">
+            <h2>Delivery Details</h2>
+            <form id="checkout-form">
+                <label>Full Name</label>
+                <input type="text" id="name" required>
+                
+                <label>Phone Number</label>
+                <input type="tel" id="phone" required placeholder="10 digits">
+                
+                <label>Shipping Address</label>
+                <textarea id="address" rows="3" required placeholder="Street, City, Zip Code"></textarea>
+                
+                <button type="submit" class="submit-btn">Place Your Order</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let cart = JSON.parse(localStorage.getItem('shopezCart')) || [];
+        let globalCartTotal = 0; // Explicit tracker for payload pass
+
+        function loadCart() {
+            const container = document.getElementById('cart-items');
+            container.innerHTML = ''; 
+            globalCartTotal = 0;
+
+            if (cart.length === 0) {
+                container.innerHTML = '<p class="empty-msg">Your cart is empty.</p>';
+                document.getElementById('grand-total').innerText = '0.00';
+                document.querySelector('.submit-btn').disabled = true;
+                return;
+            }
+
+            document.querySelector('.submit-btn').disabled = false;
+
+            cart.forEach((item, index) => {
+                globalCartTotal += item.price;
+                container.innerHTML += `
+                    <div class="cart-item">
+                        <div class="item-details">
+                            <span class="item-name">${item.name}</span>
+                            <span class="remove-link" onclick="removeItem(${index})">Delete</span>
+                        </div>
+                        <span>$${item.price.toFixed(2)}</span>
+                    </div>
+                `;
+            });
+            document.getElementById('grand-total').innerText = globalCartTotal.toFixed(2);
+        }
+
+        function removeItem(index) {
+            cart.splice(index, 1);
+            localStorage.setItem('shopezCart', JSON.stringify(cart));
+            loadCart();
+        }
+
+        document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const address = document.getElementById('address').value;
+            const phone = document.getElementById('phone').value;
+            const userId = localStorage.getItem('shopezUserId'); 
+
+            if (!userId) {
+                alert("Session lost. Please log in again.");
+                window.location.href = '/login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/orders/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: userId,
+                        items: cart,
+                        cartTotal: globalCartTotal,
+                        address: address,
+                        phone: phone
+                    })
+                });
+
+                if (response.ok) {
+                    alert("🎉 Order placed successfully!");
+                    localStorage.removeItem('shopezCart'); // Clear your active cart basket
+                    window.location.href = '/orders.html'; // Smooth pass directly into history view!
+                } else {
+                    const err = await response.json();
+                    alert("Checkout failed: " + err.message);
+                }
+            } catch (error) {
+                alert("Server connection error during checkout.");
+            }
+        });
+
+        window.onload = loadCart;
+    </script>
+</body>
+</html>

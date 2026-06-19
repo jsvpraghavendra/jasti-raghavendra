@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopez | Home</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #eaeded; display: none; } /* Kept hidden until session check passes */
+        header { background: #131921; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; font-size: 1.5rem; cursor: pointer; }
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+        .nav-link { color: white; text-decoration: none; font-size: 0.95rem; cursor: pointer; }
+        .nav-link:hover { color: #f08804; }
+        .cart-btn { background: #f08804; color: #111; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+        .cart-btn:hover { background: #dd7904; }
+        
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
+        .img-box { width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px; background: #fff; }
+        .card img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .card h3 { margin: 0 0 10px 0; font-size: 1.1rem; color: #0f1111; height: 44px; overflow: hidden; }
+        .price { font-size: 1.4rem; color: #B12704; font-weight: bold; margin-bottom: 15px; }
+        .add-btn { background: #ffd814; border: 1px solid #fcd200; width: 100%; padding: 10px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        .add-btn:hover { background: #f7ca00; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 onclick="window.location.href='/'">🛒 Shopez</h1>
+        <div class="nav-right">
+            <a href="/orders.html" class="nav-link" style="font-weight: bold;">Your Orders</a>
+            <span class="nav-link" onclick="handleSignOut()" style="color: #ff9900;">Sign Out</span>
+            <button class="cart-btn" onclick="goToCart()">Cart (<span id="cart-count">0</span>)</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="grid" id="product-grid">
+            </div>
+    </div>
+
+    <script>
+        // STRICT GATEKEEPER CHECK: Bounce unauthenticated visitors immediately
+        const userSessionId = localStorage.getItem('shopezUserId');
+        if (!userSessionId) {
+            window.location.href = '/login.html';
+        } else {
+            // Unhide page elements safely if credential string is verified
+            document.body.style.display = 'block';
+        }
+
+        const images = {
+            'AAPL': 'https://images.pexels.com/photos/3394651/pexels-photo-3394651.jpeg?auto=compress&cs=tinysrgb&w=400',
+            'TSLA': 'https://images.pexels.com/photos/4370376/pexels-photo-4370376.jpeg?auto=compress&cs=tinysrgb&w=400',
+            'MSFT': 'https://images.pexels.com/photos/18105/pexels-photo.jpg?auto=compress&cs=tinysrgb&w=400',
+            'AMZN': 'https://images.pexels.com/photos/943150/pexels-photo-943150.jpeg?auto=compress&cs=tinysrgb&w=400'
+        };
+
+        let cart = JSON.parse(localStorage.getItem('shopezCart')) || [];
+        updateCartCount();
+
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/products');
+                const products = await res.json();
+                const grid = document.getElementById('product-grid');
+                grid.innerHTML = '';
+
+                for (let sku in products) {
+                    const item = products[sku];
+                    const imgUrl = images[sku] || 'https://images.pexels.com/photos/298863/pexels-photo-298863.jpeg?auto=compress&cs=tinysrgb&w=400';
+                    
+                    grid.innerHTML += `
+                        <div class="card">
+                            <div class="img-box">
+                                <img src="${imgUrl}" alt="${item.name}">
+                            </div>
+                            <h3>${item.name}</h3>
+                            <div class="price">$${item.price.toFixed(2)}</div>
+                            <button class="add-btn" onclick="addToCart('${sku}', '${item.name}', ${item.price})">Add to Cart</button>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error("Failed to load products");
+            }
+        }
+
+        function addToCart(sku, name, price) {
+            cart.push({ sku, name, price });
+            localStorage.setItem('shopezCart', JSON.stringify(cart));
+            updateCartCount();
+            alert(`Added ${name} to your cart!`);
+        }
+
+        function updateCartCount() {
+            document.getElementById('cart-count').innerText = cart.length;
+        }
+
+        function goToCart() {
+            window.location.href = '/checkout.html';
+        }
+
+        function handleSignOut() {
+            localStorage.removeItem('shopezUserId');
+            localStorage.removeItem('shopezCart'); // Optional: clear active session basket
+            alert('Signed out successfully.');
+            window.location.href = '/login.html';
+        }
+
+        window.onload = loadProducts;
+    </script>
+</body>
+</html>

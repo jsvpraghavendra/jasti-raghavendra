@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopez | Your Orders</title>
+    <style>
+        /* Keep page completely hidden initially to prevent flickering */
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #eaeded; display: none; }
+        header { background: #131921; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; font-size: 1.5rem; cursor: pointer; }
+        .back-btn { color: white; text-decoration: none; font-weight: bold; }
+        .back-btn:hover { color: #f08804; }
+        
+        .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
+        h2 { color: #111; font-weight: 400; margin-bottom: 20px; }
+        
+        .order-card { background: white; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .order-header { background: #f0f2f2; padding: 15px 20px; display: flex; gap: 40px; border-bottom: 1px solid #ddd; font-size: 0.85rem; color: #565959; }
+        .order-header strong { display: block; color: #111; font-size: 0.95rem; margin-top: 2px; }
+        
+        .order-body { padding: 20px; }
+        .item-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.95rem; color: #111; }
+        .shipping-info { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ddd; font-size: 0.85rem; color: #565959; }
+        .shipping-info span { color: #111; font-weight: 500; }
+        
+        .empty-orders { background: white; padding: 40px; text-align: center; border-radius: 8px; border: 1px solid #ddd; color: #555; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 onclick="window.location.href='/'">🛒 Shopez</h1>
+        <a href="/" class="back-btn">← Continue Shopping</a>
+    </header>
+
+    <div class="container">
+        <h2>Your Orders</h2>
+        <div id="orders-list">
+            <p style="text-align: center; color: #666;">Loading your order history...</p>
+        </div>
+    </div>
+
+    <script>
+        // 1. IMMEDIATE GATEKEEPER CHECK: Protect page from running if token is missing/undefined
+        const userSessionId = localStorage.getItem('shopezUserId');
+        
+        if (!userSessionId || userSessionId === "undefined" || userSessionId === "null") {
+            // Force redirect immediately to prevent error pages
+            window.location.href = '/login.html';
+        } else {
+            // Safe to show the page layout structure
+            document.body.style.display = 'block';
+        }
+
+        async function loadOrders() {
+            const container = document.getElementById('orders-list');
+            try {
+                // Fetch user orders history
+                const response = await fetch(`/api/orders/history/${userSessionId}`);
+                
+                if (!response.ok) {
+                    throw new Error("Could not fetch clean order records.");
+                }
+                
+                const orders = await response.json();
+
+                if (orders.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-orders">
+                            <h3>You haven't placed any orders yet!</h3>
+                            <p>Head back to the storefront to fill up your cart.</p>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = ''; // Wipe loading placeholder
+                
+                orders.reverse().forEach(order => {
+                    const date = new Date(order.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    let itemsHtml = '';
+                    order.items.forEach(item => {
+                        itemsHtml += `
+                            <div class="item-row">
+                                <span>📦 ${item.name}</span>
+                                <strong>$${item.price.toFixed(2)}</strong>
+                            </div>`;
+                    });
+
+                    container.innerHTML += `
+                        <div class="order-card">
+                            <div class="order-header">
+                                <div>ORDER PLACED <strong>${date}</strong></div>
+                                <div>TOTAL <strong>$${order.cartTotal.toFixed(2)}</strong></div>
+                                <div>STATUS <strong style="color: green;">${order.status || 'Shipped'}</strong></div>
+                            </div>
+                            <div class="order-body">
+                                ${itemsHtml}
+                                <div class="shipping-info">
+                                    Delivery Address: <span>${order.shippingAddress}</span> | Phone: <span>${order.phone}</span>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+
+            } catch (err) {
+                container.innerHTML = `<p style="color: red; text-align: center;">Error loading history: ${err.message}</p>`;
+            }
+        }
+
+        // Only fire logic if gatekeeper check passes
+        if (userSessionId && userSessionId !== "undefined") {
+            window.onload = loadOrders;
+        }
+    </script>
+</body>
+</html>

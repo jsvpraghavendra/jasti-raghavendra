@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopez | Sign In</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eaeded; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .logo { margin-top: 40px; font-size: 2.2rem; font-weight: bold; color: #131921; text-decoration: none; }
+        
+        .auth-container { background: white; width: 350px; padding: 25px 30px; border-radius: 8px; border: 1px solid #ddd; margin-top: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); box-sizing: border-box; }
+        h2 { font-weight: 400; font-size: 1.8rem; margin-top: 0; margin-bottom: 20px; color: #111; }
+        
+        label { font-weight: bold; font-size: 0.85rem; margin-bottom: 5px; display: block; color: #111; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #a6a6a6; border-radius: 4px; box-sizing: border-box; font-size: 0.95rem; }
+        input:focus { border-color: #e77600; box-shadow: 0 0 3px 2px rgba(228,121,17,0.5); outline: none; }
+        
+        .btn { background: #f0c14b; border: 1px solid #a88734; width: 100%; padding: 12px; border-radius: 4px; cursor: pointer; font-size: 0.95rem; font-weight: bold; margin-top: 10px; }
+        .btn:hover { background: #dfb23e; }
+        
+        .divider { text-align: center; border-bottom: 1px solid #e7e7e7; margin: 25px 0; line-height: 0.1em; color: #767676; font-size: 0.85rem; }
+        .divider span { background: white; padding: 0 10px; }
+        
+        .toggle-btn { background: #e7e9ec; border: 1px solid #adb1b8; width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 0.95rem; text-align: center; text-decoration: none; display: block; color: #111; box-sizing: border-box; }
+        .toggle-btn:hover { background: #d3d6db; }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <a href="/" class="logo">🛒 Shopez</a>
+
+    <div class="auth-container">
+        <h2 id="form-title">Sign-In</h2>
+        <form id="auth-form">
+            <div id="register-fields" class="hidden">
+                <label for="name">Your name</label>
+                <input type="text" id="name" placeholder="First and last name">
+                
+                <label for="phone">Mobile number</label>
+                <input type="tel" id="phone" placeholder="10-digit number">
+            </div>
+
+            <label for="email">Email</label>
+            <input type="email" id="email" required>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" required placeholder="At least 6 characters">
+
+            <button type="submit" class="btn" id="submit-btn">Continue</button>
+        </form>
+
+        <div class="divider"><span id="divider-text">New to Shopez?</span></div>
+        <button class="toggle-btn" id="toggle-mode" onclick="toggleAuthMode()">Create your Shopez account</button>
+    </div>
+
+    <script>
+        let isLoginMode = true;
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            const registerFields = document.getElementById('register-fields');
+            const title = document.getElementById('form-title');
+            const submitBtn = document.getElementById('submit-btn');
+            const toggleLink = document.getElementById('toggle-mode');
+            const dividerText = document.getElementById('divider-text');
+
+            if (isLoginMode) {
+                registerFields.classList.add('hidden');
+                title.innerText = 'Sign-In';
+                submitBtn.innerText = 'Continue';
+                dividerText.innerText = 'New to Shopez?';
+                toggleLink.innerText = 'Create your Shopez account';
+                
+                document.getElementById('name').removeAttribute('required');
+                document.getElementById('phone').removeAttribute('required');
+            } else {
+                registerFields.classList.remove('hidden');
+                title.innerText = 'Create account';
+                submitBtn.innerText = 'Create your Shopez account';
+                dividerText.innerText = 'Already have an account?';
+                toggleLink.innerText = 'Sign-In securely';
+                
+                document.getElementById('name').setAttribute('required', 'true');
+                document.getElementById('phone').setAttribute('required', 'true');
+            }
+        }
+
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (password.length < 6) {
+                return alert('Passwords must be at least 6 characters.');
+            }
+
+            const payload = { email, password };
+            const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
+
+            if (!isLoginMode) {
+                payload.name = document.getElementById('name').value;
+                payload.phone = document.getElementById('phone').value;
+                
+                const phoneRegex = /^[0-9]{10}$/;
+                if (!phoneRegex.test(payload.phone)) {
+                    return alert('Please enter a valid 10-digit mobile number.');
+                }
+            }
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (data.userId) {
+                        localStorage.setItem('shopezUserId', data.userId);
+                    }
+                    alert(isLoginMode ? 'Welcome back!' : 'Account created successfully!');
+                    window.location.href = '/'; 
+                } else {
+                    alert(data.message || 'Authentication failed. Please check your details.');
+                }
+            } catch (error) {
+                alert('Server error. Please ensure your backend is running.');
+            }
+        });
+    </script>
+</body>
+</html>
